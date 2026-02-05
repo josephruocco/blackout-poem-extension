@@ -1,0 +1,48 @@
+# ===== OS / Editor =====
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.code-workspace
+
+# ===== Logs =====
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# ===== Node / Build (optional but common) =====
+node_modules/
+dist/
+build/
+out/
+.cache/
+.parcel-cache/
+.vite/
+.eslintcache
+coverage/
+
+# ===== Env =====
+.env
+.env.*
+!.env.example
+
+# ===== Chrome Extension Packaging =====
+*.crx
+*.pem
+*.zip
+
+# ===== TypeScript =====
+*.tsbuildinfo
+
+# ===== Misc =====
+*.bak
+*.tmp
+
+# ===== Local secrets / keys =====
+private_key*
+keys/
+secrets/

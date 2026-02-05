@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { font: 13px system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 12px; width: 280px; }
+      .row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin: 10px 0; }
+      input[type="range"] { width: 160px; }
+      .hint { opacity: 0.75; font-size: 12px; line-height: 1.3; }
+      button { width: 100%; padding: 8px 10px; border-radius: 10px; border: 1px solid #ddd; background: #fff; cursor: pointer; }
+      button:hover { background: #f6f6f6; }
+    </style>
+  </head>
+  <body>
+    <div class="row">
+      <div><strong>Enabled</strong></div>
+      <input id="enabled" type="checkbox" />
+    </div>
+
+    <div class="row">
+      <div><strong>Poem words</strong></div>
+      <input id="poemWordsTarget" type="range" min="8" max="35" step="1" />
+    </div>
+    <div class="row">
+      <div id="poemWordsLabel" class="hint"></div>
+    </div>
+
+    <div class="hint">
+      Open a supported news article and refresh to regenerate.
+      Click the poem chip (top-right) to dismiss it.
+    </div>
+
+    <div style="height:10px"></div>
+    <button id="refresh">Refresh tab</button>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

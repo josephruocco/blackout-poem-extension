@@ -1,0 +1,48 @@
+/* Hidden word becomes a black bar. */
+.bw-hide {
+  background: #000 !important;
+  color: transparent !important;
+  border-radius: 2px;
+  padding: 0 0.15em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Keep word is visible, a bit emphasized. */
+.bw-keep {
+  color: inherit !important;
+  background: transparent !important;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 2px;
+}
+
+/* Optional: subtle header chip showing the poem */
+#bw-poem-chip {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 2147483647;
+  max-width: min(520px, 90vw);
+  background: rgba(0, 0, 0, 0.86);
+  color: #fff;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font: 13px/1.35 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+}
+
+#bw-poem-chip strong {
+  display: block;
+  font-size: 11px;
+  opacity: 0.8;
+  margin-bottom: 6px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#bw-poem-chip .bw-poem {
+  white-space: pre-wrap;
+  word-break: break-word;
+}

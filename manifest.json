@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Blackout Poem News",
+  "version": "0.1.0",
+  "description": "Auto-generates a blackout poem overlay on news articles.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": [
+    "*://*.nytimes.com/*",
+    "*://*.wsj.com/*",
+    "*://*.washingtonpost.com/*",
+    "*://*.theguardian.com/*",
+    "*://*.bbc.com/*",
+    "*://*.cnn.com/*",
+    "*://*.foxnews.com/*",
+    "*://*.reuters.com/*",
+    "*://*.apnews.com/*",
+    "*://*.bloomberg.com/*",
+    "*://*.ft.com/*",
+    "*://*.economist.com/*",
+    "*://*.newyorker.com/*",
+    "*://*.theatlantic.com/*",
+    "*://*.nbcnews.com/*",
+    "*://*.cbsnews.com/*",
+    "*://*.abcnews.go.com/*"
+  ],
+  "action": {
+    "default_title": "Blackout Poem",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
