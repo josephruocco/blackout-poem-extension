@@ -279,6 +279,49 @@
     return words;
   }
 
+  function getSentenceRuns(paragraphs) {
+    const runs = [];
+    let globalWordIndex = 0;
+
+    for (const p of paragraphs) {
+      const nodes = getParagraphTextNodes(p);
+      let currentRun = [];
+      let runStart = null;
+
+      const flushRun = () => {
+        if (runStart != null && currentRun.length >= 3) {
+          runs.push({
+            start: runStart,
+            end: runStart + currentRun.length - 1,
+            words: currentRun.slice()
+          });
+        }
+        currentRun = [];
+        runStart = null;
+      };
+
+      for (const node of nodes) {
+        const parts = tokenizeParts(node.nodeValue || "");
+        for (const tok of parts) {
+          if (isWordToken(tok) || isNumberishToken(tok)) {
+            if (runStart == null) runStart = globalWordIndex;
+            currentRun.push(tok);
+            globalWordIndex++;
+            continue;
+          }
+
+          if (/[.!?;:]/.test(tok)) {
+            flushRun();
+          }
+        }
+      }
+
+      flushRun();
+    }
+
+    return runs;
+  }
+
   function getHeadlineWords() {
     const headlineEl =
       document.querySelector("h1") ||
@@ -396,6 +439,38 @@
     return s;
   }
 
+  function lineBreakPenalty(slice) {
+    const weakEdgeWords = new Set(["and","or","but","so","for","to","of","in","on","at","with","from","by","the","a","an"]);
+    let penalty = 0;
+    const first = lower(slice[0] || "");
+    const last = lower(slice[slice.length - 1] || "");
+    if (weakEdgeWords.has(first)) penalty += 1.0;
+    if (weakEdgeWords.has(last)) penalty += 1.1;
+    return penalty;
+  }
+
+  function phraseShapeScore(slice) {
+    let score = 0;
+    let hasVerb = false;
+    let hasContent = false;
+    let longImageWord = false;
+
+    for (let i = 0; i < slice.length; i++) {
+      const tok = slice[i];
+      const pos = pseudoPos(tok, i);
+      if (pos === "VERB" || pos === "AUX") hasVerb = true;
+      if (["NOUN","CONTENT","ADJ","PROPN"].includes(pos)) hasContent = true;
+      if (isWordToken(tok) && tok.length >= 5 && !STOPWORDS.has(lower(tok))) longImageWord = true;
+    }
+
+    if (hasVerb) score += 1.0;
+    if (hasContent) score += 0.8;
+    if (hasVerb && hasContent) score += 0.8;
+    if (longImageWord) score += 0.4;
+
+    return score;
+  }
+
   function scoreWindow(words, start, len, headlineWords) {
     const slice = words.slice(start, start + len);
     if (!slice.length) return -999;
@@ -438,6 +513,7 @@
     if (len >= 2 && len <= 6) score += 1.1;
     if (len === 1) score -= 1.0;
     if (len >= 8) score -= 1.2;
+    if (len >= 3 && len <= 5) score += 0.8;
 
     // grammar glue
     score += Math.min(stopCount, 2) * 0.7;
@@ -474,27 +550,41 @@
     const last = lower(slice[slice.length - 1]);
     if (STOPWORDS.has(last) && !["not","no"].includes(last)) score -= 0.5;
 
+    score += phraseShapeScore(slice);
+    score -= lineBreakPenalty(slice);
+
     return score;
   }
 
-  function buildCandidateWindows(allWords, poemWordsTarget, headlineWords, rng) {
+  function buildCandidateWindows(allWords, sentenceRuns, poemWordsTarget, headlineWords, rng) {
     const windows = [];
     const maxLen = Math.min(7, Math.max(4, poemWordsTarget));
 
-    for (let i = 0; i < allWords.length; i++) {
-      for (let len = 2; len <= maxLen; len++) {
-        if (i + len > allWords.length) break;
-        const base = scoreWindow(allWords, i, len, headlineWords);
-        if (base <= 0.0) continue;
+    for (const run of sentenceRuns) {
+      for (let localStart = 0; localStart < run.words.length; localStart++) {
+        for (let len = 2; len <= maxLen; len++) {
+          if (localStart + len > run.words.length) break;
+          const base = scoreWindow(run.words, localStart, len, headlineWords);
+          if (base <= 0.0) continue;
 
-        // small seeded jitter for rerolls
-        const jitter = (rng() - 0.5) * 0.6;
-        windows.push({
-          start: i,
-          end: i + len - 1,
-          len,
-          score: base + jitter
-        });
+          const start = run.start + localStart;
+          const end = start + len - 1;
+          const sentenceCoverage = len / run.words.length;
+          let score = base;
+
+          if (sentenceCoverage > 0.8) score -= 1.2;
+          if (sentenceCoverage >= 0.35 && sentenceCoverage <= 0.7) score += 0.6;
+
+          const jitter = (rng() - 0.5) * 0.45;
+          windows.push({
+            start,
+            end,
+            len,
+            score: score + jitter,
+            sentenceStart: run.start,
+            sentenceEnd: run.end
+          });
+        }
       }
     }
 
@@ -509,14 +599,18 @@
     return Math.abs(a.start - b.end) <= 1 || Math.abs(b.start - a.end) <= 1;
   }
 
+  function sameSentence(a, b) {
+    return a.sentenceStart === b.sentenceStart && a.sentenceEnd === b.sentenceEnd;
+  }
+
   // Build many candidates, then rank (best-of-N)
-  function buildPoemCandidates(allWords, target, headlineWords, rng, mode) {
-    const windows = buildCandidateWindows(allWords, target, headlineWords, rng);
+  function buildPoemCandidates(allWords, sentenceRuns, target, headlineWords, rng, mode) {
+    const windows = buildCandidateWindows(allWords, sentenceRuns, target, headlineWords, rng);
     if (!windows.length) return [];
 
-    const topPool = windows.slice(0, Math.min(200, windows.length));
+    const topPool = windows.slice(0, Math.min(160, windows.length));
     const candidates = [];
-    const attempts = Math.min(60, 20 + Math.floor(topPool.length / 5));
+    const attempts = Math.min(70, 24 + Math.floor(topPool.length / 4));
 
     for (let a = 0; a < attempts; a++) {
       const shuffled = topPool
@@ -531,11 +625,12 @@
       for (const w of shuffled) {
         if (budget <= 0) break;
         if (chosen.some(c => windowsOverlap(c, w))) continue;
+        if (chosen.some(c => sameSentence(c, w))) continue;
         if (chosen.some(c => windowsTooClose(c, w))) continue;
-        if (chosen.length > 0 && w.len > budget + 2) continue;
+        if (chosen.length > 0 && w.len > budget + 1) continue;
 
         // mode-dependent aggressiveness
-        if (mode === "smart_local" && w.score < 1.4 && chosen.length >= 2) continue;
+        if (mode === "smart_local" && w.score < 1.8 && chosen.length >= 2) continue;
 
         chosen.push(w);
         budget -= w.len;
@@ -547,9 +642,10 @@
         for (const w of shuffled) {
           if (budget <= 0) break;
           if (chosen.some(c => windowsOverlap(c, w))) continue;
+          if (chosen.some(c => sameSentence(c, w))) continue;
           chosen.push(w);
           budget -= w.len;
-          localScore += w.score * 0.8;
+          localScore += w.score * 0.75;
           if (chosen.length >= 3) break;
         }
       }
@@ -588,6 +684,7 @@
         if (isWordToken(t) && !STOPWORDS.has(lower(t)) && t.length >= 5) evocative++;
       }
       poemScore += Math.min(evocative, 8) * 0.3;
+      poemScore += new Set(chosen.map(w => `${w.sentenceStart}-${w.sentenceEnd}`)).size * 0.5;
 
       candidates.push({ windows: chosen, score: poemScore, wordCount });
     }
@@ -606,7 +703,7 @@
     return deduped;
   }
 
-  function pickPoemWordPositions(allWords, settings) {
+  function pickPoemWordPositions(allWords, sentenceRuns, settings) {
     const headlineWords = getHeadlineWords();
     const seedMaterial = [
       location.href,
@@ -664,7 +761,7 @@
     }
 
     // smart_local mode
-    const built = buildPoemCandidates(allWords, settings.poemWordsTarget, headlineWords, rng, settings.mode);
+    const built = buildPoemCandidates(allWords, sentenceRuns, settings.poemWordsTarget, headlineWords, rng, settings.mode);
 
     if (built.length) {
       // choose among top few with seeded variability
@@ -857,9 +954,11 @@
     }
 
     const allWords = getVisibleWordStream(paragraphs);
+    const sentenceRuns = getSentenceRuns(paragraphs);
     if (allWords.length < 10) return;
+    if (!sentenceRuns.length) return;
 
-    const { keepPositions, windows } = pickPoemWordPositions(allWords, settings);
+    const { keepPositions, windows } = pickPoemWordPositions(allWords, sentenceRuns, settings);
     const poemText = buildPoemText(allWords, keepPositions, windows);
 
     addPoemChip(poemText, settings);
