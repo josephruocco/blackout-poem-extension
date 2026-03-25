@@ -53,6 +53,40 @@
     "mr","mrs","ms","dr","professor"
   ]);
 
+  // Words that earn a scoring bonus for creating poetic imagery or emotional weight
+  const EVOCATIVE = new Set([
+    // emotional states
+    "grief","rage","shame","longing","dread","anguish","tender","fierce",
+    "fragile","desperate","weary","breathless","furious","defiant","restless",
+    "haunted","yearning","condemned","abandoned","exhausted","relentless",
+    // sensory / physical
+    "burning","hollow","trembling","silent","bitter","bleeding","drowning",
+    "fading","shattering","pale","raw","sharp","numb","frozen","crumbling",
+    "gleaming","blinding","aching","withering","smoldering","scarred",
+    // nature / elemental
+    "storm","shadow","stone","iron","glass","ash","dust","flood","tide",
+    "wound","scar","bloom","decay","void","ember","smoke","bone","vein",
+    "abyss","silence","ruins","fire","ice","rain","blood","ghost","earth",
+    // conceptual weight
+    "power","truth","freedom","prison","exile","memory","witness","voice",
+    "dream","impossible","forbidden","forgotten","sacred","burden","fracture",
+    "survival","resistance","collapse","reckoning","awakening","catastrophe",
+    // strong action verbs
+    "refuses","trembles","burns","survives","escapes","crumbles","endures",
+    "suffers","demands","confronts","betrays","collapses","erupts","mourns",
+    "defies","persists","emerges","strikes","bleeds","breaks","rises","falls",
+    // original list
+    "ashamed","authority","ruling","fear","quiet","burn","dark","light",
+    "alone","broken","refuse","wait","hunger","mercy","steel","work","around"
+  ]);
+
+  // Journalistic attribution/scaffolding verbs that make bad poetry
+  const JOURNALISTIC_VERBS = new Set([
+    "said","says","wrote","joined","ruled","cited","stated","added","noted",
+    "argued","claimed","announced","confirmed","replied","according","reported",
+    "testified","acknowledged","responded","described","explained","indicated"
+  ]);
+
   let bwState = {
     root: null,
     processedParagraphs: [],
@@ -531,16 +565,25 @@
     if (maxPropRun >= 2) score -= (maxPropRun - 1) * 2.4;
     if (capsCount >= 3) score -= (capsCount - 2) * 1.1;
 
-    // penalize explicit legal/news scaffolding words
+    // penalize journalistic attribution / scaffolding verbs (each one hurts)
     const lowSlice = slice.map(lower);
-    const scaffolding = ["president","justice","court","congress","approval","wrote","joined","said"];
-    let scaffoldHits = 0;
-    for (const w of lowSlice) if (scaffolding.includes(w)) scaffoldHits++;
-    if (scaffoldHits >= 3) score -= (scaffoldHits - 2) * 1.1;
+    let scaffoldPenalty = 0;
+    for (const w of lowSlice) {
+      if (JOURNALISTIC_VERBS.has(w)) scaffoldPenalty += 1.0;
+    }
+    score -= scaffoldPenalty;
 
-    // boost emotionally loaded / image-like words (simple heuristic)
-    const evocativeRegex = /(defiant|ashamed|authority|ruling|shadow|strikes|work|around|fall|fear|quiet|burn|storm|glass|blood|ghost|dark|light|alone|broken|refuse|wait|hunger|mercy|steel|dust)/i;
-    for (const t of slice) if (isWordToken(t) && evocativeRegex.test(t)) score += 0.8;
+    // boost emotionally loaded / image-like words
+    for (const t of slice) if (isWordToken(t) && EVOCATIVE.has(lower(t))) score += 0.9;
+
+    // reward POS diversity within a window (varied parts of speech = richer phrase)
+    const posTypes = new Set();
+    for (let i = 0; i < slice.length; i++) {
+      if (isWordToken(slice[i])) posTypes.add(pseudoPos(slice[i], i));
+    }
+    if (posTypes.size >= 3) score += 0.7;
+    else if (posTypes.size === 2) score += 0.2;
+    else if (posTypes.size === 1 && slice.length >= 3) score -= 0.5;
 
     // discourage starting with weak glue unless compact phrase
     const first = lower(slice[0]);
@@ -575,7 +618,7 @@
           if (sentenceCoverage > 0.8) score -= 1.2;
           if (sentenceCoverage >= 0.35 && sentenceCoverage <= 0.7) score += 0.6;
 
-          const jitter = (rng() - 0.5) * 0.45;
+          const jitter = (rng() - 0.5) * 0.7;
           windows.push({
             start,
             end,
@@ -603,6 +646,13 @@
     return a.sentenceStart === b.sentenceStart && a.sentenceEnd === b.sentenceEnd;
   }
 
+  // Words between two non-overlapping windows
+  function gapBetweenWindows(a, b) {
+    const earlier = a.end < b.start ? a : b;
+    const later = earlier === a ? b : a;
+    return later.start - earlier.end - 1;
+  }
+
   // Build many candidates, then rank (best-of-N)
   function buildPoemCandidates(allWords, sentenceRuns, target, headlineWords, rng, mode) {
     const windows = buildCandidateWindows(allWords, sentenceRuns, target, headlineWords, rng);
@@ -625,7 +675,8 @@
       for (const w of shuffled) {
         if (budget <= 0) break;
         if (chosen.some(c => windowsOverlap(c, w))) continue;
-        if (chosen.some(c => sameSentence(c, w))) continue;
+        // allow two windows from the same sentence only if they're far apart (4+ word gap)
+        if (chosen.some(c => sameSentence(c, w) && gapBetweenWindows(c, w) < 4)) continue;
         if (chosen.some(c => windowsTooClose(c, w))) continue;
         if (chosen.length > 0 && w.len > budget + 1) continue;
 
@@ -678,13 +729,34 @@
       let junkHits = selectedWords.filter(t => isWordToken(t) && NEWS_JUNK.has(lower(t))).length;
       poemScore -= junkHits * 1.8;
 
-      // reward evocative density
+      // reward evocative density using the EVOCATIVE set
       let evocative = 0;
       for (const t of selectedWords) {
-        if (isWordToken(t) && !STOPWORDS.has(lower(t)) && t.length >= 5) evocative++;
+        if (isWordToken(t) && EVOCATIVE.has(lower(t))) evocative++;
+        else if (isWordToken(t) && !STOPWORDS.has(lower(t)) && t.length >= 6) evocative += 0.4;
       }
-      poemScore += Math.min(evocative, 8) * 0.3;
+      poemScore += Math.min(evocative, 8) * 0.4;
+
+      // reward windows drawn from different sentences
       poemScore += new Set(chosen.map(w => `${w.sentenceStart}-${w.sentenceEnd}`)).size * 0.5;
+
+      // reward poems that span a wider swath of the article (not clustered in one paragraph)
+      const articleSpan = allWords.length > 1
+        ? (chosen[chosen.length - 1].end - chosen[0].start) / allWords.length
+        : 0;
+      poemScore += articleSpan * 1.8;
+
+      // penalize repeated content words across different windows
+      const contentWordFreq = new Map();
+      for (const t of selectedWords) {
+        if (isWordToken(t) && !STOPWORDS.has(lower(t)) && !isLikelyJunkWord(t)) {
+          const w = lower(t);
+          contentWordFreq.set(w, (contentWordFreq.get(w) || 0) + 1);
+        }
+      }
+      for (const freq of contentWordFreq.values()) {
+        if (freq > 1) poemScore -= (freq - 1) * 1.5;
+      }
 
       candidates.push({ windows: chosen, score: poemScore, wordCount });
     }
@@ -830,70 +902,45 @@
   }
 
   // ---------------- UI chip ----------------
-  function ensureStyles() {
-    if (document.getElementById("bw-poem-style")) return;
-    const style = document.createElement("style");
-    style.id = "bw-poem-style";
-    style.textContent = `
-      .bw-hide {
-        background: #000 !important;
-        color: #000 !important;
-        border-radius: 2px !important;
-        box-decoration-break: clone;
-        -webkit-box-decoration-break: clone;
-      }
-      .bw-keep {
-        color: inherit !important;
-        background: transparent !important;
-      }
-      #bw-poem-chip {
-        position: fixed;
-        top: 12px;
-        right: 12px;
-        z-index: 2147483647;
-        max-width: min(420px, 42vw);
-        background: rgba(20,20,20,0.95);
-        color: #fff;
-        border-radius: 12px;
-        padding: 12px 14px;
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-        box-shadow: 0 8px 26px rgba(0,0,0,0.35);
-        cursor: pointer;
-        user-select: none;
-        line-height: 1.35;
-      }
-      #bw-poem-chip .bw-title {
-        font-size: 12px;
-        letter-spacing: 0.12em;
-        opacity: 0.85;
-        font-weight: 800;
-        margin-bottom: 6px;
-      }
-      #bw-poem-chip .bw-poem {
-        white-space: pre-line;
-        font-size: 15px;
-      }
-      #bw-poem-chip .bw-sub {
-        margin-top: 8px;
-        font-size: 11px;
-        opacity: 0.7;
-      }
-    `;
-    document.documentElement.appendChild(style);
-  }
+  const MODE_LABELS = { smart_local: "Smart", randomish: "Random" };
 
   function addPoemChip(poemText, settings) {
-    ensureStyles();
     removePoemChip();
 
     const chip = document.createElement("div");
     chip.id = "bw-poem-chip";
-    chip.innerHTML = `
-      <div class="bw-title">BLACKOUT POEM</div>
-      <div class="bw-poem"></div>
-      <div class="bw-sub">tap to reroll • mode: ${settings.mode}</div>
-    `;
-    chip.querySelector(".bw-poem").textContent = poemText;
+
+    const header = document.createElement("div");
+    header.className = "bw-chip-header";
+
+    const title = document.createElement("span");
+    title.className = "bw-title";
+    title.textContent = "Blackout Poem";
+
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "bw-close";
+    closeBtn.textContent = "×";
+    closeBtn.title = "Dismiss";
+    closeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      removePoemChip();
+    });
+
+    header.appendChild(title);
+    header.appendChild(closeBtn);
+
+    const poemEl = document.createElement("div");
+    poemEl.className = "bw-poem";
+    poemEl.textContent = poemText;
+
+    const sub = document.createElement("div");
+    sub.className = "bw-sub";
+    const modeLabel = MODE_LABELS[settings.mode] || settings.mode;
+    sub.textContent = `tap to reroll \u2022 ${modeLabel} mode`;
+
+    chip.appendChild(header);
+    chip.appendChild(poemEl);
+    chip.appendChild(sub);
 
     chip.addEventListener("click", async (e) => {
       e.stopPropagation();
@@ -1048,19 +1095,15 @@
     }
   });
 
-  // Reapply on resize/scroll with light debounce so viewport-only stays true
-  let viewportTimer = null;
-  function debouncedViewportSync() {
-    clearTimeout(viewportTimer);
-    viewportTimer = setTimeout(() => {
-      getSettings().then(s => {
-        if (s.enabled) syncToSetting();
-      });
-    }, 220);
-  }
-
-  window.addEventListener("resize", debouncedViewportSync, { passive: true });
-  window.addEventListener("scroll", debouncedViewportSync, { passive: true });
+  // Reapply on resize (viewport dimensions changed, so paragraph visibility may shift).
+  // Scroll is intentionally excluded — regenerating the poem mid-read is jarring.
+  let resizeTimer = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      getSettings().then(s => { if (s.enabled) syncToSetting(); });
+    }, 400);
+  }, { passive: true });
 
   // Initial apply
   syncToSetting();

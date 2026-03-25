@@ -18,31 +18,62 @@
   text-underline-offset: 2px;
 }
 
-/* Optional: subtle header chip showing the poem */
+/* Poem chip — fixed overlay showing the generated poem */
 #bw-poem-chip {
   position: fixed;
   top: 14px;
   right: 14px;
   z-index: 2147483647;
-  max-width: min(520px, 90vw);
-  background: rgba(0, 0, 0, 0.86);
+  max-width: min(420px, 88vw);
+  background: rgba(20, 20, 20, 0.95);
   color: #fff;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-radius: 12px;
   font: 13px/1.35 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  user-select: none;
 }
 
-#bw-poem-chip strong {
-  display: block;
-  font-size: 11px;
-  opacity: 0.8;
+#bw-poem-chip .bw-chip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 6px;
-  letter-spacing: 0.06em;
+}
+
+#bw-poem-chip .bw-title {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+  font-weight: 800;
   text-transform: uppercase;
+}
+
+#bw-poem-chip .bw-close {
+  background: none;
+  border: none;
+  color: #fff;
+  opacity: 0.55;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0 0 8px;
+  margin: 0;
+}
+
+#bw-poem-chip .bw-close:hover {
+  opacity: 1;
 }
 
 #bw-poem-chip .bw-poem {
   white-space: pre-wrap;
   word-break: break-word;
+  font-size: 15px;
+}
+
+#bw-poem-chip .bw-sub {
+  margin-top: 8px;
+  font-size: 11px;
+  opacity: 0.65;
 }
