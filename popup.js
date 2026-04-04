@@ -63,7 +63,7 @@ function renderStatus(text, isError = false) {
   });
 
   $("poemWordsTarget").addEventListener("input", async (e) => {
-    const val = Number(e.target.value);
+    const val = Math.max(8, Math.min(35, Number(e.target.value) || 18));
     $("poemWordsLabel").textContent = `Keep ~${val} words visible as the poem`;
     await setSettings({ poemWordsTarget: val });
     // no forced message; content script listens to storage changes

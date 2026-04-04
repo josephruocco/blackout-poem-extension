@@ -3,6 +3,9 @@
   if (window.__BW_POETRY_LOADED__) return;
   window.__BW_POETRY_LOADED__ = true;
 
+  // Store original paragraph HTML off-DOM to avoid serializing it as an attribute.
+  const paragraphOriginals = new WeakMap();
+
   const ALLOWLIST = new Set([
     "nytimes.com",
     "wsj.com",
@@ -233,6 +236,7 @@
     let best = null;
     let bestScore = -Infinity;
 
+    const loopVh = window.innerHeight || document.documentElement.clientHeight;
     for (const el of blocks.slice(0, 1200)) {
       const ps = el.querySelectorAll?.("p");
       if (!ps || ps.length < 3) continue;
@@ -242,8 +246,7 @@
       const rect = el.getBoundingClientRect?.();
       let viewportBonus = 0;
       if (rect) {
-        const vh = window.innerHeight || document.documentElement.clientHeight;
-        if (rect.top < vh * 0.75 && rect.bottom > vh * 0.1) viewportBonus = 800;
+        if (rect.top < loopVh * 0.75 && rect.bottom > loopVh * 0.1) viewportBonus = 800;
       }
 
       const score = ps.length * 70 + Math.min(textLen, 10000) + viewportBonus;
@@ -996,7 +999,7 @@
 
     // Save originals once for only the paragraphs we mutate
     for (const p of paragraphs) {
-      if (!p.dataset.bwOrig) p.dataset.bwOrig = p.innerHTML;
+      if (!paragraphOriginals.has(p)) paragraphOriginals.set(p, p.innerHTML);
       p.dataset.bwProcessed = "1";
     }
 
@@ -1027,28 +1030,37 @@
     // restore any processed paragraphs under root
     const processed = root.querySelectorAll("p[data-bw-processed='1']");
     for (const p of processed) {
-      if (p.dataset.bwOrig != null) p.innerHTML = p.dataset.bwOrig;
-      delete p.dataset.bwOrig;
+      if (paragraphOriginals.has(p)) {
+        p.innerHTML = paragraphOriginals.get(p);
+        paragraphOriginals.delete(p);
+      }
       delete p.dataset.bwProcessed;
     }
 
     bwState.processedParagraphs = [];
   }
 
+  let isSyncing = false;
   async function syncToSetting() {
-    const settings = await getSettings();
-    const root = findArticleRoot();
-    if (!root) return;
+    if (isSyncing) return;
+    isSyncing = true;
+    try {
+      const settings = await getSettings();
+      const root = findArticleRoot();
+      if (!root) return;
 
-    bwState.root = root;
+      bwState.root = root;
 
-    if (!settings.enabled) {
-      removeBlackout(root);
-      return;
+      if (!settings.enabled) {
+        removeBlackout(root);
+        return;
+      }
+
+      removeBlackout(root); // always reset before reapplying
+      applyBlackout(root, settings);
+    } finally {
+      isSyncing = false;
     }
-
-    removeBlackout(root); // always reset before reapplying
-    applyBlackout(root, settings);
   }
 
   // ---------------- reroll / popup messaging ----------------
