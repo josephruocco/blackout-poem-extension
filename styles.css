@@ -6,6 +6,20 @@
   padding: 0 0.15em;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+  transition: color 0.15s ease, background 0.15s ease;
+  cursor: pointer;
+}
+
+/* Hover to peek — fade word back in */
+.bw-hide:hover {
+  color: rgba(255,255,255,0.9) !important;
+  background: rgba(0,0,0,0.75) !important;
+}
+
+/* Show-all mode — reveal everything */
+body.bw-revealed .bw-hide {
+  background: transparent !important;
+  color: inherit !important;
 }
 
 /* Keep word is visible, a bit emphasized. */
@@ -76,4 +90,20 @@
   margin-top: 8px;
   font-size: 11px;
   opacity: 0.65;
+}
+
+#bw-poem-chip .bw-reveal-toggle {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 11px;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  opacity: 0.65;
+  font-family: inherit;
+}
+
+#bw-poem-chip .bw-reveal-toggle:hover {
+  opacity: 1;
 }

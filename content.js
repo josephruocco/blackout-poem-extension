@@ -939,7 +939,18 @@
     const sub = document.createElement("div");
     sub.className = "bw-sub";
     const modeLabel = MODE_LABELS[settings.mode] || settings.mode;
-    sub.textContent = `tap to reroll \u2022 ${modeLabel} mode`;
+
+    const revealBtn = document.createElement("button");
+    revealBtn.className = "bw-reveal-toggle";
+    revealBtn.textContent = "show all";
+    revealBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const revealed = document.body.classList.toggle("bw-revealed");
+      revealBtn.textContent = revealed ? "hide all" : "show all";
+    });
+
+    sub.appendChild(document.createTextNode(`tap to reroll \u2022 ${modeLabel} mode \u2022 `));
+    sub.appendChild(revealBtn);
 
     chip.appendChild(header);
     chip.appendChild(poemEl);
