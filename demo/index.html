@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Newspoem — Blackout Poem Extension for Chrome</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: #f5f0e8;
+    color: #111;
+    min-height: 100vh;
+  }
+
+  /* ── Masthead ── */
+  .masthead {
+    border-bottom: 3px solid #111;
+    padding: 32px 20px 24px;
+    text-align: center;
+  }
+
+  .masthead::after {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 1px;
+    background: #111;
+    margin-top: 6px;
+  }
+
+  .title {
+    font-size: clamp(28px, 6vw, 52px);
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1.25;
+  }
+
+  .title-line {
+    display: block;
+    text-align: center;
+  }
+
+  .title .char {
+    display: inline-block;
+    position: relative;
+    transition: color 0.3s ease;
+  }
+
+  .title .char {
+    position: relative;
+    z-index: 1;
+  }
+
+  .title .char::after {
+    content: '';
+    position: absolute;
+    left: -1px;
+    right: -1px;
+    top: 2px;
+    bottom: 2px;
+    background: #111;
+    border-radius: 2px;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 2;
+  }
+
+  .title .char.redacted {
+    color: transparent;
+    transition: color 0.15s ease 0.2s;
+  }
+
+  .title .char.redacted::after {
+    transform: scaleX(1);
+  }
+
+  .title .char.kept {
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-underline-offset: 4px;
+    font-weight: 800;
+  }
+
+  .title .space {
+    display: inline-block;
+    width: 0.3em;
+    transition: width 0.3s ease;
+  }
+
+  .title .space.redacted {
+    width: 0;
+  }
+
+  .subtitle {
+    font-size: 16px;
+    color: #666;
+    margin-top: 16px;
+    font-style: italic;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+  }
+
+  .subtitle.visible { opacity: 1; }
+
+  /* ── Content ── */
+  .content {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  .section {
+    margin-bottom: 40px;
+  }
+
+  h2 {
+    font-size: 22px;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #111;
+    padding-bottom: 6px;
+  }
+
+  p {
+    font-size: 17px;
+    line-height: 1.7;
+    margin-bottom: 14px;
+    color: #333;
+  }
+
+  .cta {
+    display: inline-block;
+    background: #111;
+    color: #f5f0e8;
+    padding: 14px 32px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 17px;
+    font-weight: 600;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    transition: background 0.15s;
+    margin-top: 8px;
+  }
+
+  .cta:hover { background: #333; }
+
+  .sites-list {
+    columns: 2;
+    font-size: 15px;
+    line-height: 2;
+    color: #444;
+    list-style: none;
+    padding: 0;
+  }
+
+  .sites-list li::before {
+    content: '▪ ';
+    color: #999;
+  }
+
+  .screenshot {
+    width: 100%;
+    border-radius: 10px;
+    border: 2px solid #ddd;
+    margin: 16px 0;
+  }
+
+  .footer {
+    text-align: center;
+    padding: 24px 20px;
+    font-size: 13px;
+    color: #999;
+    border-top: 1px solid #ddd;
+  }
+
+  .footer a { color: #666; }
+
+  /* ── Replay button ── */
+  .replay-btn {
+    background: none;
+    border: 1px solid #ccc;
+    color: #666;
+    font-size: 13px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    margin-top: 12px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .replay-btn:hover { border-color: #111; color: #111; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="title" id="title"></div>
+  <div class="subtitle" id="subtitle">A Chrome extension that turns news into poetry</div>
+  <br>
+  <button class="replay-btn" id="replayBtn" onclick="runAnimation()">replay</button>
+</header>
+
+<main class="content">
+  <div class="section">
+    <h2>What it does</h2>
+    <p>Newspoem automatically transforms news articles into blackout poems. Open any supported news site and the extension redacts words in real time, leaving behind hidden poetry in the text.</p>
+    <p>Hover any blacked-out word to peek. Click "show all" to read the full article. Click the poem chip to reroll a new poem.</p>
+  </div>
+
+  <div class="section">
+    <h2>Features</h2>
+    <p><strong>Smart mode</strong> picks coherent, poetic phrases. <strong>Random mode</strong> is more chaotic. Adjust how many words survive with the slider. Every article, every visit — a new poem.</p>
+    <p>Works on 17 major news sites. No accounts, no servers, no data collection. Everything runs locally in your browser.</p>
+  </div>
+
+  <div class="section">
+    <h2>Supported sites</h2>
+    <ul class="sites-list">
+      <li>New York Times</li>
+      <li>Washington Post</li>
+      <li>The Guardian</li>
+      <li>Wall Street Journal</li>
+      <li>BBC News</li>
+      <li>CNN</li>
+      <li>Fox News</li>
+      <li>Reuters</li>
+      <li>AP News</li>
+      <li>Bloomberg</li>
+      <li>Financial Times</li>
+      <li>The Economist</li>
+      <li>The New Yorker</li>
+      <li>The Atlantic</li>
+      <li>NBC News</li>
+      <li>CBS News</li>
+      <li>ABC News</li>
+    </ul>
+  </div>
+
+  <div class="section" style="text-align: center;">
+    <h2>Get it</h2>
+    <p>Available on the Chrome Web Store.</p>
+    <a class="cta" href="#" id="ctaLink">Add to Chrome</a>
+  </div>
+</main>
+
+<footer class="footer">
+  &copy; <a href="https://josephruocco.net" target="_blank">Joseph Ruocco</a>. All rights reserved.
+  &nbsp;&middot;&nbsp;
+  <a href="../privacy.html">Privacy Policy</a>
+</footer>
+
+<script>
+// 3 lines:
+// Line 1: "Newspaper"     → keep "News", redact "paper"
+// Line 2: "Blackout Poem" → keep "poem", redact "Blackout " and uppercase P→p
+// Line 3: "Extension"     → fully redacted
+
+const LINES = [
+  { text: 'Newspaper',     keep: [0,1,2,3] },         // N,e,w,s
+  { text: 'Blackout Poem', keep: [9,10,11,12] },      // P,o,e,m (indices within this line)
+  { text: 'Extension',     keep: [] },
+];
+
+const titleEl = document.getElementById('title');
+const subtitleEl = document.getElementById('subtitle');
+const replayBtn = document.getElementById('replayBtn');
+
+let allItems = [];
+
+function buildTitle() {
+  titleEl.innerHTML = '';
+  allItems = [];
+
+  LINES.forEach(line => {
+    const lineEl = document.createElement('div');
+    lineEl.className = 'title-line';
+    for (let i = 0; i < line.text.length; i++) {
+      const span = document.createElement('span');
+      if (line.text[i] === ' ') {
+        span.className = 'space';
+      } else {
+        span.className = 'char';
+        span.textContent = line.text[i];
+      }
+      lineEl.appendChild(span);
+      allItems.push({
+        el: span,
+        isSpace: line.text[i] === ' ',
+        keep: line.keep.includes(i),
+        lineKeep: line.keep,
+        idx: i,
+      });
+    }
+    titleEl.appendChild(lineEl);
+  });
+}
+
+function runAnimation() {
+  buildTitle();
+  subtitleEl.classList.remove('visible');
+  replayBtn.style.display = 'none';
+
+  const toRedact = allItems.filter(c => !c.isSpace && !c.keep);
+
+  // Shuffle
+  for (let i = toRedact.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [toRedact[i], toRedact[j]] = [toRedact[j], toRedact[i]];
+  }
+
+  const delay = 1000;
+  const stagger = 80;
+
+  toRedact.forEach((c, idx) => {
+    setTimeout(() => { c.el.classList.add('redacted'); }, delay + idx * stagger);
+  });
+
+  const finishTime = delay + toRedact.length * stagger + 300;
+
+  setTimeout(() => {
+    allItems.forEach(c => {
+      if (!c.isSpace && c.keep) {
+        c.el.classList.add('kept');
+        // lowercase P in "Poem"
+        if (c.el.textContent === 'P' && c.idx === 9) c.el.textContent = 'p';
+      }
+      // Collapse spaces adjacent to redacted chars
+      if (c.isSpace) {
+        c.el.classList.add('redacted');
+      }
+    });
+
+    subtitleEl.classList.add('visible');
+    replayBtn.style.display = '';
+  }, finishTime);
+}
+
+buildTitle();
+setTimeout(runAnimation, 500);
+</script>
+
+</body>
+</html>

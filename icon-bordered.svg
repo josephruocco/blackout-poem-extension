@@ -1,6 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <!-- Newspaper background -->
   <rect width="128" height="128" rx="14" fill="#f5f0e8"/>
+  <rect x="4" y="4" width="120" height="120" rx="11" fill="none" stroke="#dac8f4" stroke-width="4"/>
+
   <!-- Masthead rules -->
   <rect x="14" y="11" width="100" height="2" fill="#111"/>
   <rect x="14" y="15" width="100" height="0.7" fill="#111"/>
