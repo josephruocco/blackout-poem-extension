@@ -84,7 +84,7 @@
   </head>
   <body>
     <div class="panel">
-      <h1>Blackout Poem News</h1>
+      <h1>News Poem</h1>
       <p class="subhead">Turn article text into a live blackout poem overlay.</p>
 
       <div class="row">
@@ -117,6 +117,13 @@
               <div class="hint">More chaotic word selection</div>
             </div>
           </label>
+          <label class="mode-option">
+            <input id="modeManual" name="mode" type="radio" />
+            <div>
+              <div>Manual</div>
+              <div class="hint">Start blank, click words to build it yourself</div>
+            </div>
+          </label>
         </div>
       </div>
 
@@ -128,6 +135,9 @@
         <button id="reroll" type="button">Reroll poem</button>
         <button id="refresh" type="button">Refresh tab</button>
       </div>
+
+      <button id="marker" type="button" style="margin-top:8px">🖊️ Open marker kit</button>
+      <button id="crawl" type="button" style="margin-top:8px">🌀 Text crawl</button>
 
       <div id="status" aria-live="polite"></div>
     </div>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  html,body{margin:0;background:#fff}
+  #stage{width:1000px;margin:50px auto;text-align:center;
+         font-family:Arial,Helvetica,sans-serif;font-weight:900;color:#111;line-height:1.2}
+  .word{display:block;white-space:nowrap;filter:url(#warp)}
+  .word span{display:inline-block}
+</style></head>
+<body>
+<div id="stage">
+  <div class="word" id="w1"></div>
+  <div class="word" id="w2"></div>
+  <div class="word" id="w3"></div>
+</div>
+<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0"><defs>
+  <filter id="warp" x="-30%" y="-30%" width="160%" height="160%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.009" numOctaves="4" seed="4" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="26"/>
+  </filter>
+</defs></svg>
+<script>
+const SP = String.fromCharCode(160);
+// gentle deliberate arch (no random jitter); the displacement filter adds the organic wobble + rough edges
+function word(el, text, o){
+  el.style.fontSize=o.size+"px";
+  const chars=[...text], n=chars.length;
+  chars.forEach((ch,i)=>{
+    const s=document.createElement("span");
+    s.textContent=ch===" "?SP:ch;
+    const t=n>1?i/(n-1):0.5;
+    const arch=(1-Math.pow(2*t-1,2))*o.arch;   // convex-up bow
+    s.style.transform="translateY("+(-arch).toFixed(1)+"px)";
+    el.appendChild(s);
+  });
+}
+word(document.getElementById("w1"), "XELA",      {size:104, arch:22});
+word(document.getElementById("w2"), "SOMETHING", {size:124, arch:44});
+word(document.getElementById("w3"), "WHATEVER",  {size:132, arch:50});
+</script>
+</body></html>

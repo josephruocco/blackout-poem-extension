@@ -1,26 +1,30 @@
-/* Hidden word becomes a black bar. */
+/* Hidden word gets a skewed, hand-drawn redaction bar over it. */
 .bw-hide {
-  background: #000 !important;
-  color: transparent !important;
-  border-radius: 2px;
-  padding: 0 0.15em;
-  box-decoration-break: clone;
-  -webkit-box-decoration-break: clone;
-  transition: color 0.15s ease, background 0.15s ease;
+  position: relative;
+  color: inherit !important;
+  background: transparent !important;
   cursor: pointer;
 }
 
-/* Hover to peek — fade word back in */
-.bw-hide:hover {
-  color: rgba(255,255,255,0.9) !important;
-  background: rgba(0,0,0,0.75) !important;
+.bw-hide::after {
+  content: "";
+  position: absolute;
+  left: -0.1em;
+  right: -0.1em;
+  top: -0.02em;
+  height: 1.15em;
+  background: #000;
+  border-radius: 0.12em;
+  box-shadow: 0 0 1px rgba(0, 0, 0, 0.35);
+  transform: skewY(-3deg) rotate(var(--rot, -2deg));
+  transition: opacity 0.15s ease;
 }
 
+/* Hover to peek — fade the bar off */
+.bw-hide:hover::after { opacity: 0.12; }
+
 /* Show-all mode — reveal everything */
-body.bw-revealed .bw-hide {
-  background: transparent !important;
-  color: inherit !important;
-}
+body.bw-revealed .bw-hide::after { opacity: 0; }
 
 /* Keep word is visible, a bit emphasized. */
 .bw-keep {
@@ -30,6 +34,7 @@ body.bw-revealed .bw-hide {
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 2px;
+  cursor: pointer;
 }
 
 /* Poem chip — fixed overlay showing the generated poem */
@@ -106,4 +111,258 @@ body.bw-revealed .bw-hide {
 
 #bw-poem-chip .bw-reveal-toggle:hover {
   opacity: 1;
+}
+
+/* Destruction / distortion fx applied to individual words */
+.bw-fx {
+  display: inline-block;
+  position: relative;
+  transform-origin: center bottom;
+}
+
+/* Melt — liquid displacement via the injected SVG #bw-goo filter */
+.bw-goo-melt {
+  display: inline-block;
+  filter: url(#bw-goo);
+}
+
+/* Rough — shaky hand-cut edges via the injected SVG #bw-rough filter */
+.bw-rough {
+  display: inline-block;
+  filter: url(#bw-rough);
+}
+
+/* Warp — big smooth liquid waves via the injected SVG #bw-warp filter */
+.bw-warp {
+  display: inline-block;
+  filter: url(#bw-warp);
+}
+
+/* Curve — bend the word into a fixed arch (per-letter offset + tilt) */
+.bw-wavechar {
+  display: inline-block;
+  transform: translateY(var(--ty)) rotate(var(--rot));
+}
+
+/* Smear — trailing ghost copies of the letters, dragged like wet ink */
+.bw-smudge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+@keyframes bw-balloon {
+  0%   { transform: scale(1); }
+  70%  { transform: scale(2.4) rotate(-2deg); }
+  100% { transform: scale(2.1) rotate(1deg); }
+}
+.bw-balloon {
+  animation: bw-balloon 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
+}
+
+.bw-shard {
+  display: inline-block;
+  animation: bw-shatter 0.8s cubic-bezier(0.15, 0.7, 0.25, 1) forwards;
+}
+/* shards fly out and stay scattered (not vanish) — glass everywhere */
+@keyframes bw-shatter {
+  to {
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot));
+    opacity: 0.7;
+  }
+}
+
+/* Crawl mode — Star Wars-style perspective scroll into the horizon */
+#bw-crawl {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  background: #fafafa;
+  overflow: hidden;
+  perspective: 600px;
+}
+
+.bw-crawl-stage {
+  position: absolute;
+  inset: 0;
+  transform: rotateX(34deg);
+  transform-origin: 50% 100%;
+}
+
+.bw-crawl-content {
+  position: absolute;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: 92%;
+  max-width: 1100px;
+  color: rgba(0, 0, 0, 0.9);
+  font: 900 62px/1.15 Georgia, "Times New Roman", serif;
+  text-align: justify;
+}
+
+.bw-crawl-title {
+  font-size: 1.05em;
+  line-height: 1.05;
+  margin-bottom: 0.4em;
+}
+
+.bw-crawl-content p {
+  margin: 0 0 0.4em;
+}
+
+/* fade the top into the distance */
+#bw-crawl::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 55% 0;
+  background: linear-gradient(#fafafa, transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+#bw-crawl-close {
+  position: fixed;
+  top: 14px;
+  right: 16px;
+  z-index: 5;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.16);
+  color: #000;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Marker kit — full-page drawing canvas + floating toolbar */
+#bw-marker-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2147483646;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+#bw-marker-bar {
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 94vw;
+  gap: 6px;
+  padding: 8px;
+  background: rgba(20, 20, 20, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  font: 13px system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+#bw-marker-bar button {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font: inherit;
+}
+
+#bw-marker-bar button:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+#bw-marker-bar button.bw-active {
+  background: #fff;
+  color: #111;
+  border-color: #fff;
+}
+
+#bw-marker-bar #bw-color {
+  width: 30px;
+  height: 30px;
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  align-self: center;
+}
+
+#bw-marker-bar #bw-width {
+  width: 90px;
+  align-self: center;
+  cursor: pointer;
+  accent-color: #fff;
+}
+
+/* A cut-out clipping — draggable magazine scrap */
+.bw-clip {
+  position: absolute;
+  z-index: 2147483646;
+  cursor: grab;
+  background: #fff;
+  padding: 3px;
+  border-radius: 2px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  touch-action: none;
+  user-select: none;
+}
+
+/* Lassoed cutout — no paper card; shadow follows the traced shape's edges */
+.bw-clip-shaped {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
+}
+
+.bw-clip > canvas,
+.bw-clip > img {
+  display: block;
+  max-width: none;
+}
+
+.bw-clip-text {
+  max-width: 260px;
+  padding: 6px 9px;
+  font: 500 17px/1.3 Georgia, "Times New Roman", serif;
+  color: #111;
+}
+
+.bw-clip-del,
+.bw-clip-dup {
+  position: absolute;
+  top: -9px;
+  width: 19px;
+  height: 19px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #111;
+  color: #fff;
+  font-size: 12px;
+  line-height: 19px;
+  text-align: center;
+  cursor: pointer;
+  display: none;
+}
+
+.bw-clip-del { right: -9px; }
+.bw-clip-dup { right: 16px; }
+
+.bw-clip:hover .bw-clip-del,
+.bw-clip:hover .bw-clip-dup {
+  display: block;
 }

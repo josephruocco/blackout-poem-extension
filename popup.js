@@ -54,6 +54,7 @@ function renderStatus(text, isError = false) {
   // Mode
   if ($("modeSmart")) $("modeSmart").checked = (s.mode || "smart_local") === "smart_local";
   if ($("modeRandom")) $("modeRandom").checked = (s.mode || "smart_local") === "randomish";
+  if ($("modeManual")) $("modeManual").checked = (s.mode || "smart_local") === "manual";
 
   $("enabled").addEventListener("change", async (e) => {
     await setSettings({ enabled: !!e.target.checked });
@@ -90,6 +91,16 @@ function renderStatus(text, isError = false) {
     });
   }
 
+  if ($("modeManual")) {
+    $("modeManual").addEventListener("change", async (e) => {
+      if (!e.target.checked) return;
+      await setSettings({ mode: "manual" });
+      const res = await sendToActiveTab({ type: "BW_SYNC_NOW" });
+      if (!res?.ok) renderStatus(`Mode apply failed: ${res?.error || "unknown error"}`, true);
+      else renderStatus("Manual mode");
+    });
+  }
+
   $("reroll").addEventListener("click", async () => {
     const res = await sendToActiveTab({ type: "BW_REROLL" });
     if (!res?.ok) {
@@ -97,6 +108,18 @@ function renderStatus(text, isError = false) {
       return;
     }
     renderStatus("Rerolled");
+  });
+
+  $("marker").addEventListener("click", async () => {
+    const res = await sendToActiveTab({ type: "BW_MARKER_TOGGLE" });
+    if (!res?.ok) renderStatus("Open a supported article first.", true);
+    else { renderStatus(res.open ? "Marker kit open" : "Marker kit closed"); window.close(); }
+  });
+
+  $("crawl").addEventListener("click", async () => {
+    const res = await sendToActiveTab({ type: "BW_CRAWL_TOGGLE" });
+    if (!res?.ok) renderStatus("Open a supported article first.", true);
+    else { renderStatus(res.open ? "Crawl running" : "Crawl closed"); window.close(); }
   });
 
   $("refresh").addEventListener("click", async () => {
